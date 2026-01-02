@@ -23,7 +23,7 @@ A Windows DLL library that enables **Red Alert 3** to connect to custom multipla
 
 When Red Alert 3 connects to the login server, it validates the server's SSL certificate against a hardcoded public key embedded in the game executable. Other community servers solve this by patching the executable to replace the original key with their own.
 
-This project takes a different approach: instead of modifying the game executable, we patch the certificate validation at runtime to accept any SSL certificate. This is implemented in `ra3-proxy/patch/RA3/PatchSSL.cpp` and is based on "EA games fesl.ea.com certificate verification remover 0.2" by Aluigi.
+This project takes a different approach: instead of modifying the game executable, we patch the certificate validation at runtime to accept any SSL certificate. This is implemented in `ra3-proxy/patch/RA3/PatchSSL.cpp` and is based on [fesl.ea.com certificate verification remover](https://aluigi.altervista.org/patches/fesl.lpatch) by Aluigi.
 
 ### SSL Proxy for Legacy Ciphers
 
