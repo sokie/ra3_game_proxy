@@ -17,6 +17,26 @@ A Windows DLL library that enables **Red Alert 3** to connect to custom multipla
 | [CnC-Online](https://cnc-online.net/) | Community-run servers for C&C games |
 | [Kirov Server Emulator](https://github.com/sokie/kirov-server-emulator) | Self-hosted server emulator for RA3 |
 
+## Why SSL Patching & Proxy?
+
+### SSL Certificate Validation Patch
+
+When Red Alert 3 connects to the login server, it validates the server's SSL certificate against a hardcoded public key embedded in the game executable. Other community servers solve this by patching the executable to replace the original key with their own.
+
+This project takes a different approach: instead of modifying the game executable, we patch the certificate validation at runtime to accept any SSL certificate. This is implemented in `ra3-proxy/patch/RA3/PatchSSL.cpp` and is based on "EA games fesl.ea.com certificate verification remover 0.2" by Aluigi.
+
+### SSL Proxy for Legacy Ciphers
+
+Red Alert 3 uses an extremely outdated SSL implementation with cipher suites that modern servers no longer support due to security vulnerabilities. Requiring server operators to enable these insecure ciphers would be a poor solution.
+
+Instead, this project includes a local SSL proxy (`ra3-proxy/patch/RA3/ProxySSL.cpp`) that:
+
+1. Accepts connections from the game using the legacy insecure ciphers
+2. Terminates the SSL locally
+3. Forwards the traffic to the actual server either in plain text or over a modern secure connection
+
+This allows Red Alert 3 to connect to modern server implementations without requiring those servers to support deprecated cryptography.
+
 ## Building
 
 ### Prerequisites
