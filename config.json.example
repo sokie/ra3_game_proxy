@@ -1,0 +1,38 @@
+{
+    "debug": {
+        "showConsole": true,
+        "createLog": true,
+        "logDecryption": false,
+        "logLevelConsole": 2,
+        "logLevelFile": 1
+    },
+    "patches": {
+        "SSL": true
+    },
+    "proxy": {
+        "enable": true,
+        "host": "127.0.0.1",
+        "destinationPort": 18840,
+        "listenPort": 18840,
+        "secure": false
+    },
+    "game": {
+        "gameKey": ""
+    },
+    "hostnames": {
+        "host": "http.server.cnc-online.net",
+        "login": "login.server.cnc-online.net",
+        "gpcm": "gpcm.server.cnc-online.net",
+        "peerchat": "peerchat.server.cnc-online.net",
+        "master": "master.server.cnc-online.net",
+        "natneg": "natneg.server.cnc-online.net",
+        "stats": "gamestats.server.cnc-online.net",
+        "sake": "sake.server.cnc-online.net",
+        "server": "server.cnc-online.net",
+        "register": "https://cnc-online.net/en/connect/register/",
+        "website": "https://cnc-online.net/en/",
+        "detour": "localhost",
+        "mac": "mac",
+        "tos": "https://cnc-online.net/en/faq/"
+    }
+}
