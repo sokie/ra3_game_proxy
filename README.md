@@ -65,7 +65,7 @@ Copy `config.json.example` to `config.json` and modify as needed.
     "debug": {
         "showConsole": true,
         "createLog": true,
-        "logDecryption": true
+        "logDecryption": false
     },
     "patches": {
         "SSL": true
@@ -74,9 +74,6 @@ Copy `config.json.example` to `config.json` and modify as needed.
         "enable": true,
         "destinationPort": 18800,
         "secure": false
-    },
-    "game": {
-        "gameKey": "YOUR_GAME_KEY"
     },
     "hostnames": {
         "host": "localhost",
