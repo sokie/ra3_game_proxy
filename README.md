@@ -17,55 +17,13 @@ A Windows DLL library that enables **Red Alert 3** to connect to custom multipla
 | [CnC-Online](https://cnc-online.net/) | Community-run servers for C&C games |
 | [Kirov Server Emulator](https://github.com/sokie/kirov-server-emulator) | Self-hosted server emulator for RA3 |
 
-## Why SSL Patching & Proxy?
+## Installation
 
-### SSL Certificate Validation Patch
+1. Build the DLL or download from releases
+2. Place `winmm.dll` and the other files in the game/Data/ directory
+3. Configure `config.json` and place in game folder
 
-When Red Alert 3 connects to the login server, it validates the server's SSL certificate against a hardcoded public key embedded in the game executable. Other community servers solve this by patching the executable to replace the original key with their own.
-
-This project takes a different approach: instead of modifying the game executable, we patch the certificate validation at runtime to accept any SSL certificate. This is implemented in `ra3-proxy/patch/RA3/PatchSSL.cpp` and is based on [fesl.ea.com certificate verification remover](https://aluigi.altervista.org/patches/fesl.lpatch) by Aluigi.
-
-### SSL Proxy for Legacy Ciphers
-
-Red Alert 3 uses an extremely outdated SSL implementation with cipher suites that modern servers no longer support due to security vulnerabilities. Requiring server operators to enable these insecure ciphers would be a poor solution.
-
-Instead, this project includes a local SSL proxy (`ra3-proxy/patch/RA3/ProxySSL.cpp`) that:
-
-1. Accepts connections from the game using the legacy insecure ciphers
-2. Terminates the SSL locally
-3. Forwards the traffic to the actual server either in plain text or over a modern secure connection
-
-This allows Red Alert 3 to connect to modern server implementations without requiring those servers to support deprecated cryptography.
-
-## Building
-
-### Prerequisites
-
-- Visual Studio 2019 or later
-- [vcpkg](https://github.com/microsoft/vcpkg) package manager
-
-### Dependencies
-
-Install dependencies via vcpkg:
-
-```bash
-vcpkg install boost:x86-windows detours:x86-windows
-```
-
-### OpenSSL 1.0.2u (Manual Build Required)
-
-Red Alert 3 uses a legacy SSL implementation that requires **OpenSSL 1.0.2u**. This version is deprecated and not available in vcpkg, so it must be built manually.
-
-1. Download OpenSSL 1.0.2u source from [openssl.org/source/old](https://www.openssl.org/source/old/1.0.2/)
-2. Build for x86 (32-bit) Windows
-3. Copy the built libraries to your `vcpkg_installed/x86-windows` directory:
-   - `lib/libeay32.lib`
-   - `lib/ssleay32.lib`
-   - `include/openssl/*`
-
-### Compile
-
-Open `ra3-proxy.sln` in Visual Studio and build the solution.
+If you currently use Tacitus from CncOnline, rename `dsound.dll` to `dsound.dll.bkp`
 
 ## Configuration
 
@@ -175,11 +133,55 @@ This allows you to see:
 - Peerchat (IRC-based) game lobby communication
 - Master server list queries and responses
 
-## Installation
+## Building
 
-1. Build the DLL or download from releases
-2. Place `winmm.dll` in the game/Data/ directory
-3. Configure `config.json` and place in game folder
+### Prerequisites
+
+- Visual Studio 2019 or later
+- [vcpkg](https://github.com/microsoft/vcpkg) package manager
+
+### Dependencies
+
+Install dependencies via vcpkg:
+
+```bash
+vcpkg install boost:x86-windows detours:x86-windows
+```
+
+### OpenSSL 1.0.2u (Manual Build Required)
+
+Red Alert 3 uses a legacy SSL implementation that requires **OpenSSL 1.0.2u**. This version is deprecated and not available in vcpkg, so it must be built manually.
+
+1. Download OpenSSL 1.0.2u source from [openssl.org/source/old](https://www.openssl.org/source/old/1.0.2/)
+2. Build for x86 (32-bit) Windows
+3. Copy the built libraries to your `vcpkg_installed/x86-windows` directory:
+   - `lib/libeay32.lib`
+   - `lib/ssleay32.lib`
+   - `include/openssl/*`
+
+### Compile
+
+Open `ra3-proxy.sln` in Visual Studio and build the solution.
+
+## Why SSL Patching & Proxy?
+
+### SSL Certificate Validation Patch
+
+When Red Alert 3 connects to the login server, it validates the server's SSL certificate against a hardcoded public key embedded in the game executable. Other community servers solve this by patching the executable to replace the original key with their own.
+
+This project takes a different approach: instead of modifying the game executable, we patch the certificate validation at runtime to accept any SSL certificate. This is implemented in `ra3-proxy/patch/RA3/PatchSSL.cpp` and is based on [fesl.ea.com certificate verification remover](https://aluigi.altervista.org/patches/fesl.lpatch) by Aluigi.
+
+### SSL Proxy for Legacy Ciphers
+
+Red Alert 3 uses an extremely outdated SSL implementation with cipher suites that modern servers no longer support due to security vulnerabilities. Requiring server operators to enable these insecure ciphers would be a poor solution.
+
+Instead, this project includes a local SSL proxy (`ra3-proxy/patch/RA3/ProxySSL.cpp`) that:
+
+1. Accepts connections from the game using the legacy insecure ciphers
+2. Terminates the SSL locally
+3. Forwards the traffic to the actual server either in plain text or over a modern secure connection
+
+This allows Red Alert 3 to connect to modern server implementations without requiring those servers to support deprecated cryptography.
 
 ## License
 
