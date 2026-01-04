@@ -134,6 +134,9 @@ Copy `config.json.example` to `config.json` and modify as needed.
 }
 ```
 
+When connecting to another PC on your network, you need to add a line to your hosts file `c:\Windows\System32\drivers\etc\hosts` with their IP and a name like `192.168.68.123 my_cool_pc`. If you connect through VPN such as Hamachi, add the hamachi IP of the other PC.
+Then you need to add that to your config file as so `"login": "my_cool_pc",` and all the other lines.
+
 ## Configuration Reference
 
 | Section | Key | Default | Description |
