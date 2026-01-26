@@ -18,8 +18,10 @@ public:
 	}
 
 	BOOL Patch() const;
-	void DumpAuthCheckMemory() const;
 
 private:
 	DWORD baseAddress_;
+	DWORD size_;
+	DWORD offset_;
+	DWORD entryPoint_;
 };

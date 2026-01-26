@@ -1,131 +1,106 @@
 // PatchAuthKey.cpp : Defines the PatchAuthKey class, which handles the patching of auth certificate check.
 #include "../../Framework.h"
+#include "../../util.h"
 #include "PatchAuthKey.hpp"
+#include "PatchSSL.hpp"  // For PatternByte
+
+// Forward declarations from PatchSSL.cpp
+extern std::vector<PatternByte> ParsePattern(const std::string& pattern_str);
+extern std::vector<std::byte*> FindAllPatterns(std::byte* start_address, size_t search_length, const std::vector<PatternByte>& pattern);
 
 PatchAuthKey::PatchAuthKey()
 {
-	// Get the base address of the current module
+	// Get the handle of the current module
 	HANDLE hModule = GetModuleHandle(nullptr);
 	baseAddress_ = reinterpret_cast<DWORD>(hModule);
-}
 
-// Helper function to dump memory bytes as hex string
-static std::string DumpMemoryAsHex(BYTE* address, size_t length)
-{
-	std::stringstream ss;
-	for (size_t i = 0; i < length; ++i)
-	{
-		ss << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(address[i]);
-		if (i < length - 1) ss << " ";
-	}
-	return ss.str();
-}
-
-// Debug function to dump memory at auth check addresses for pattern creation
-void PatchAuthKey::DumpAuthCheckMemory() const
-{
-	BOOST_LOG_NAMED_SCOPE("AuthKeyPatch")
-
-	// Known addresses for version 1.12
-	constexpr DWORD auth_check_addresses[] = {
-		0xB36CBFu,
-		0x9444BFu
-	};
-
-	// How many bytes to dump before and after the patch point
-	constexpr size_t DUMP_BEFORE = 16;
-	constexpr size_t DUMP_AFTER = 16;
-	constexpr size_t TOTAL_DUMP = DUMP_BEFORE + DUMP_AFTER;
-
-	BOOST_LOG_TRIVIAL(info) << "=== AUTH CHECK MEMORY DUMP FOR PATTERN CREATION ===";
-	BOOST_LOG_TRIVIAL(info) << "Dumping " << DUMP_BEFORE << " bytes before and " << DUMP_AFTER << " bytes after each address";
-
-	for (size_t idx = 0; idx < 2; ++idx)
-	{
-		DWORD address = auth_check_addresses[idx];
-		BYTE* startAddress = reinterpret_cast<BYTE*>(address - DUMP_BEFORE);
-
-		DWORD oldProtect;
-		if (!VirtualProtect(startAddress, TOTAL_DUMP, PAGE_EXECUTE_READ, &oldProtect))
-		{
-			BOOST_LOG_TRIVIAL(error) << "Failed to read memory at address: 0x" << std::hex << address;
-			continue;
-		}
-
-		BOOST_LOG_TRIVIAL(info) << "";
-		BOOST_LOG_TRIVIAL(info) << "--- Location " << (idx + 1) << " at 0x" << std::hex << address << " ---";
-		BOOST_LOG_TRIVIAL(info) << "Start dump address: 0x" << std::hex << reinterpret_cast<DWORD>(startAddress);
-
-		// Dump bytes before
-		BOOST_LOG_TRIVIAL(info) << "Before (-" << std::dec << DUMP_BEFORE << " bytes): " << DumpMemoryAsHex(startAddress, DUMP_BEFORE);
-
-		// Dump bytes at patch point
-		BOOST_LOG_TRIVIAL(info) << "At patch point:      " << DumpMemoryAsHex(reinterpret_cast<BYTE*>(address), 5) << " (these 5 bytes will be replaced)";
-
-		// Dump bytes after
-		BOOST_LOG_TRIVIAL(info) << "After (+" << std::dec << DUMP_AFTER << " bytes):  " << DumpMemoryAsHex(reinterpret_cast<BYTE*>(address), DUMP_AFTER);
-
-		VirtualProtect(startAddress, TOTAL_DUMP, oldProtect, &oldProtect);
-	}
-
-	BOOST_LOG_TRIVIAL(info) << "";
-	BOOST_LOG_TRIVIAL(info) << "=== COMPARE BOTH LOCATIONS TO CREATE PATTERN ===";
-	BOOST_LOG_TRIVIAL(info) << "Bytes that differ between locations should use ?? wildcard";
-	BOOST_LOG_TRIVIAL(info) << "Example pattern format: \"83 C4 ?? 85 C0 74 ?? 8B\"";
+	// Get the size and entry point offset of the module
+	size_ = GetModuleSize(hModule);
+	offset_ = GetEntryPointOffset(hModule);
+	entryPoint_ = baseAddress_ + offset_;
 }
 
 BOOL PatchAuthKey::Patch() const
 {
 	BOOST_LOG_NAMED_SCOPE("AuthKeyPatch")
 
-	// First dump memory to help create patterns (can be removed after pattern is finalized)
-	DumpAuthCheckMemory();
+	// Pattern for already patched executable:
+	// F7 D8 B8 01 00 00 00 5E 81 C4 ?? ?? 00 00 C3
+	// (neg eax; mov eax, 1; pop esi; add esp, imm32; ret)
+	std::string patched_pattern_string = "F7 D8 B8 01 00 00 00 5E 81 C4 ?? ?? 00 00 C3";
 
-	BOOST_LOG_TRIVIAL(info) << "Patching auth certificate check...";
+	BOOST_LOG_TRIVIAL(debug) << "Searching for pattern of already patched executable: \"" << patched_pattern_string << "\"";
+
+	std::vector<PatternByte> parsed_pattern = ParsePattern(patched_pattern_string);
+	if (parsed_pattern.empty()) {
+		BOOST_LOG_TRIVIAL(error) << "Failed to parse patched pattern.";
+		return FALSE;
+	}
+
+	std::byte* ptr = reinterpret_cast<std::byte*>(entryPoint_);
+
+	std::vector<std::byte*> patched_addresses = FindAllPatterns(ptr, size_, parsed_pattern);
+	if (!patched_addresses.empty()) {
+		BOOST_LOG_TRIVIAL(info) << "Auth certificate check is already patched! Found " << patched_addresses.size() << " patched location(s).";
+		for (const auto& addr : patched_addresses) {
+			BOOST_LOG_TRIVIAL(debug) << "  - Patched at: 0x" << std::hex << reinterpret_cast<DWORD>(addr);
+		}
+		return TRUE;
+	}
+
+	// Pattern for unpatched executable:
+	// F7 D8 1B C0 83 C0 01 5E 81 C4 ?? ?? 00 00 C3
+	// (neg eax; sbb eax, eax; add eax, 1; pop esi; add esp, imm32; ret)
+	// Patch point is at offset 2 (where "1B C0 83 C0 01" starts)
+	std::string unpatched_pattern_string = "F7 D8 1B C0 83 C0 01 5E 81 C4 ?? ?? 00 00 C3";
+
+	BOOST_LOG_TRIVIAL(info) << "Searching for auth certificate check pattern: \"" << unpatched_pattern_string << "\"";
+
+	parsed_pattern = ParsePattern(unpatched_pattern_string);
+	if (parsed_pattern.empty()) {
+		BOOST_LOG_TRIVIAL(error) << "Failed to parse unpatched pattern.";
+		return FALSE;
+	}
+
+	std::vector<std::byte*> found_addresses = FindAllPatterns(ptr, size_, parsed_pattern);
+	if (found_addresses.empty()) {
+		BOOST_LOG_TRIVIAL(error) << "Failed to find auth certificate check code. Pattern not found!";
+		return FALSE;
+	}
+
+	BOOST_LOG_TRIVIAL(info) << "Found " << found_addresses.size() << " auth certificate check location(s) to patch.";
 
 	// mov eax, 0x01 - makes the function return 1 (success)
+	// We replace "1B C0 83 C0 01" (5 bytes) with "B8 01 00 00 00" (5 bytes)
 	static constexpr BYTE new_auth_certificate_check_return_value[] = {
 		0xB8, 0x01, 0x00, 0x00, 0x00  // mov eax, 0x01
 	};
 
-	// Addresses to patch (relative to module base would be offset, but these appear to be absolute)
-	constexpr DWORD auth_check_addresses[] = {
-		0xB36CBFu,
-		0x9444BFu
-	};
-
 	int patchedCount = 0;
-
-	for (DWORD address : auth_check_addresses)
-	{
-		BYTE* patchAddress = reinterpret_cast<BYTE*>(address);
+	for (std::byte* found_address : found_addresses) {
+		// Patch point is at offset 2 from pattern start (after "F7 D8")
+		BYTE* patchAddress = reinterpret_cast<BYTE*>(found_address + 2);
 
 		DWORD oldProtect;
-		// Change page protection to allow writing
-		if (!VirtualProtect(patchAddress, sizeof(new_auth_certificate_check_return_value), PAGE_EXECUTE_READWRITE, &oldProtect))
-		{
-			BOOST_LOG_TRIVIAL(error) << "Failed to change memory protection at address: 0x" << std::hex << address;
+		if (!VirtualProtect(patchAddress, sizeof(new_auth_certificate_check_return_value), PAGE_EXECUTE_READWRITE, &oldProtect)) {
+			BOOST_LOG_TRIVIAL(error) << "Failed to change memory protection at: 0x" << std::hex << reinterpret_cast<DWORD>(patchAddress);
 			continue;
 		}
 
-		// Write the patch bytes
 		memcpy(patchAddress, new_auth_certificate_check_return_value, sizeof(new_auth_certificate_check_return_value));
 
-		// Restore original protection
 		VirtualProtect(patchAddress, sizeof(new_auth_certificate_check_return_value), oldProtect, &oldProtect);
 
-		BOOST_LOG_TRIVIAL(info) << "Successfully patched auth certificate check at address: 0x" << std::hex << address;
+		BOOST_LOG_TRIVIAL(info) << "Patched auth certificate check at: 0x" << std::hex << reinterpret_cast<DWORD>(patchAddress);
 		patchedCount++;
 	}
 
-	if (patchedCount == 2)
-	{
-		BOOST_LOG_TRIVIAL(info) << "Auth certificate check patching complete!";
+	if (patchedCount > 0) {
+		BOOST_LOG_TRIVIAL(info) << "Successfully patched " << std::dec << patchedCount << "/" << found_addresses.size() << " auth certificate check location(s)!";
 		return TRUE;
 	}
-	else
-	{
-		BOOST_LOG_TRIVIAL(error) << "Failed to patch all auth certificate check addresses. Patched: " << patchedCount << "/2";
+	else {
+		BOOST_LOG_TRIVIAL(error) << "Failed to patch any auth certificate check locations.";
 		return FALSE;
 	}
 }
