@@ -166,16 +166,17 @@ BOOL PatchSSL::Patch() const
 				return FALSE;
 			}
 
-			//patch B8 15 00 00 00
-			*reinterpret_cast<BYTE*>(found_address + 6) = 0xB8;
-			*reinterpret_cast<BYTE*>(found_address + 7) = 0x15;
-			*reinterpret_cast<BYTE*>(found_address + 8) = 0x00;
-			*reinterpret_cast<BYTE*>(found_address + 9) = 0x00;
-			*reinterpret_cast<BYTE*>(found_address + 10) = 0x00;
+			// Patch at offset 6: replace "83 ?? 15" with "B8 15 00 00 00" (mov eax, 0x15)
+			BYTE* patchAddress = reinterpret_cast<BYTE*>(found_address + 6);
+			patchAddress[0] = 0xB8;
+			patchAddress[1] = 0x15;
+			patchAddress[2] = 0x00;
+			patchAddress[3] = 0x00;
+			patchAddress[4] = 0x00;
 
 			VirtualProtect(found_address, 15, oldProtect, &oldProtect);
 
-			BOOST_LOG_TRIVIAL(info) << "Patched SSL verification at: 0x" << std::hex << reinterpret_cast<DWORD>(found_address);
+			BOOST_LOG_TRIVIAL(info) << "Patched SSL verification at: 0x" << std::hex << reinterpret_cast<DWORD>(patchAddress);
 			return TRUE;
 		}
 		else {
