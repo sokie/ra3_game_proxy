@@ -36,6 +36,7 @@ Config::Config()
 
 	// Section - Patches
 	patchSSL = pt.get("patches.SSL", true);
+	patchAuthKey = pt.get("patches.AuthKey", true);
 
 	// Section - Proxy
 	proxy_enable = pt.get("proxy.enable", true);

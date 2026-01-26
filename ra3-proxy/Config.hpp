@@ -29,6 +29,7 @@ public:
 
 	/* Patches */
 	bool patchSSL;
+	bool patchAuthKey;
 
 	/* Proxy */
 	bool proxy_enable;

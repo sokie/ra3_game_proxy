@@ -105,6 +105,7 @@
     <ClInclude Include="dllmain.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="GameVersion.h" />
+    <ClInclude Include="patch\RA3\PatchAuthKey.hpp" />
     <ClInclude Include="patch\RA3\PatchSSL.hpp" />
     <ClInclude Include="patch\RA3\ProxyCert.hpp" />
     <ClInclude Include="patch\RA3\ProxySSL.h" />
@@ -116,6 +117,7 @@
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="GameVersion.cpp" />
+    <ClCompile Include="patch\RA3\PatchAuthKey.cpp" />
     <ClCompile Include="patch\RA3\PatchSSL.cpp" />
     <ClCompile Include="patch\RA3\ProxySSL.cpp" />
     <ClCompile Include="util.cpp" />
