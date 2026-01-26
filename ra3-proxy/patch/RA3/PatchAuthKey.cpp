@@ -24,6 +24,8 @@ BOOL PatchAuthKey::Patch() const
 {
 	BOOST_LOG_NAMED_SCOPE("AuthKeyPatch")
 
+	BOOST_LOG_TRIVIAL(debug) << "Entry point: 0x" << std::hex << entryPoint_ << ", size: 0x" << size_;
+
 	// Pattern for already patched executable:
 	// F7 D8 B8 01 00 00 00 5E 81 C4 ?? ?? 00 00 C3
 	// (neg eax; mov eax, 1; pop esi; add esp, imm32; ret)
@@ -37,9 +39,17 @@ BOOL PatchAuthKey::Patch() const
 		return FALSE;
 	}
 
+	BOOST_LOG_TRIVIAL(debug) << "Pattern parsed, " << parsed_pattern.size() << " bytes. Starting search...";
+
 	std::byte* ptr = reinterpret_cast<std::byte*>(entryPoint_);
 
+	if (ptr == nullptr || size_ == 0) {
+		BOOST_LOG_TRIVIAL(error) << "Invalid entry point or size!";
+		return FALSE;
+	}
+
 	std::vector<std::byte*> patched_addresses = FindAllPatterns(ptr, size_, parsed_pattern);
+	BOOST_LOG_TRIVIAL(debug) << "Search complete.";
 	if (!patched_addresses.empty()) {
 		BOOST_LOG_TRIVIAL(info) << "Auth certificate check is already patched! Found " << patched_addresses.size() << " patched location(s).";
 		for (const auto& addr : patched_addresses) {
