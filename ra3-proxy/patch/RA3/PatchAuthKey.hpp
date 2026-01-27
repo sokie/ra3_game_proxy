@@ -21,4 +21,7 @@ public:
 
 private:
 	DWORD baseAddress_;
+	DWORD size_;
+	DWORD offset_;
+	DWORD entryPoint_;
 };
